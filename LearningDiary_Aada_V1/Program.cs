@@ -11,7 +11,7 @@ namespace LearningDiary_Aada_V1
             bool newTopic = true;
             while (newTopic)
             {
-
+                Console.WriteLine("What's the title of this topic?");
             }
 
 
