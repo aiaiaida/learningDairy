@@ -11,7 +11,7 @@ namespace LearningDiary_Aada_V1
         static void Main(string[] args)
         {
             // a txt file to store all the title of topics
-            string path = @"C:\Users\Aada\source\repos\AWACADEMY\KoulutusWeek1\LearningDiaryAadaV1\topiclist.txt";
+            string path = @"C:\Users\Aada\source\repos\AWACADEMY\KoulutusWeek1\LearningDiaryAadaV1\topiclist.csv";
             // a list to store all topic objects
             List<Topic> topicList = new List<Topic>();
             // a bool value to display the MainMenu until user enters 4
@@ -30,7 +30,7 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine("Welcome to the learning diary application");
             Console.WriteLine("Please choose an option: ");
             Console.WriteLine("1) Add a new topic");
-            Console.WriteLine("2) Delete a topic");
+            Console.WriteLine("2) Delete all topics");
             Console.WriteLine("3) Show the list of topics");
             Console.WriteLine("4) Exit");
 
@@ -49,9 +49,15 @@ namespace LearningDiary_Aada_V1
                     return true;
 
                 case 2:
+                    //delete the file by writing over it with a empty string
+                    File.WriteAllText(path,"");
+                    Console.WriteLine("Deletion completed");
+                    Console.WriteLine("Press any key to return to the main menu");
+                    Console.ReadKey();
                     return true;
 
                 case 3:
+                    // read and print all lines
                     string[] readText = File.ReadAllLines(path);
                     int i;
                     for (i = 0; i < readText.Length; i++)
@@ -76,12 +82,19 @@ namespace LearningDiary_Aada_V1
         {
             Topic newTopic = new Topic();
             // read the id from the file
-            // !!!!!!!! this id doesn't workkkk !!!!!!
-            string[] readText = File.ReadAllLines(path);
-            newTopic.id = readText.Length + 1;
+            if (File.Exists(path))
+            { 
+                string[] readText = File.ReadAllLines(path);
+                newTopic.id = readText.Length + 1;
+            }
+            else
+            {
+                newTopic.id = 1;
+            }
 
             newTopic.title = title;
             Console.WriteLine($"The {title} topic is created!");
+            newTopic.startLearningDate = DateTime.Now;
 
             bool displayTopicMenu = true;
             while (displayTopicMenu)
@@ -90,29 +103,24 @@ namespace LearningDiary_Aada_V1
             }
             
             topicList.Add(newTopic);
-            string info = $"{newTopic.id},{newTopic.title},{newTopic.description},{newTopic.estimatedTimeToMaster},{newTopic.timeSpent},{newTopic.source},{newTopic.startLearningDate.ToShortDateString()},{newTopic.inProgress},{newTopic.completionDate.ToShortDateString()}";
-            if (File.Exists(path))
-            {
-                File.AppendAllText(path, info + Environment.NewLine);
-            }
-            else
-            {
-                File.WriteAllText(path, info + Environment.NewLine);
-            }
+            string taskInfo = string.Join(",", newTopic.taskList);
+            string info = $"{newTopic.id},{newTopic.title},{newTopic.description},{newTopic.estimatedTimeToMaster},{newTopic.timeSpent},{newTopic.source},{newTopic.startLearningDate.ToShortDateString()},{newTopic.inProgress},{newTopic.completionDate.ToShortDateString()},{taskInfo}";
+            // add also tasks and their values
+
+            File.AppendAllText(path, info + Environment.NewLine);
         }
 
         private static bool TopicMenu(ref Topic newTopic)
         {
             Console.WriteLine("");
-            Console.WriteLine("Please choose an option to Add to your topic: ");
-            Console.WriteLine("1) Description");
-            Console.WriteLine("2) Estimated time to master in hour unit");
-            Console.WriteLine("3) Time spent on it in hour unit");
-            Console.WriteLine("4) Source");
-            Console.WriteLine("5) Date when you started learning (dd/mm/yyyy)");
-            Console.WriteLine("6) Completion date (dd/mm/yyyy)");
-            Console.WriteLine("7) Show information of this topic");
-            Console.WriteLine("8) Return to the main menu");
+            Console.WriteLine("Please choose an option: ");
+            Console.WriteLine("1) Add Description");
+            Console.WriteLine("2) Add Estimated time to master in hour unit");
+            Console.WriteLine("3) Add Source");
+            Console.WriteLine("4) Add Completion date (dd-mm-yyyy)");
+            Console.WriteLine("5) Add tasks to this topic");
+            Console.WriteLine("6) Show information of this topic");
+            Console.WriteLine("7) Return to the main menu and save the topic");
 
             int topicChoice = int.Parse(Console.ReadLine());
             
@@ -131,105 +139,203 @@ namespace LearningDiary_Aada_V1
                     Console.WriteLine($"Estimated time saved. {newTopic.estimatedTimeToMaster}");
                     return true;
                 case 3:
-                    Console.WriteLine("Please enter the time already spent on this topic in hour unit");
-                    double userTimeSpent = Convert.ToDouble(Console.ReadLine());
-                    newTopic.timeSpent = userTimeSpent;
-                    Console.WriteLine($"Time spent saved. {newTopic.timeSpent}");
-                    return true;
-                case 4:
                     Console.WriteLine("Please enter a source web url or a book");
                     string userSource = Console.ReadLine();
                     newTopic.source = userSource;
                     Console.WriteLine($"Source saved. {newTopic.source}");
                     return true;
-                case 5:
-                    Console.WriteLine("Please enter the date when you started the topic (dd/mm/yyyy)");
-                    DateTime userStartDate = DateTime.ParseExact(Console.ReadLine(), "dd/MM/yyyy", CultureInfo.InvariantCulture);
-                    newTopic.startLearningDate = userStartDate;
-                    Console.WriteLine($"Start learning date saved. {newTopic.startLearningDate.ToShortDateString()}");
-                    return true;
-                case 6:
-                    Console.WriteLine("Please enter the completion date (dd/mm/yyyy)");
-                    DateTime userCompletionDate = DateTime.ParseExact(Console.ReadLine(), "dd/MM/yyyy", CultureInfo.InvariantCulture);
+                case 4:
+                    Console.WriteLine("Please enter the completion date (dd-mm-yyyy)");
+                    DateTime userCompletionDate = DateTime.ParseExact(Console.ReadLine(), "dd-MM-yyyy", CultureInfo.InvariantCulture);
                     newTopic.completionDate = userCompletionDate;
                     newTopic.inProgress = false;
-                    Console.WriteLine($"Completion date saved. {newTopic.completionDate.ToShortDateString()}");
+                    newTopic.timeSpent = (newTopic.completionDate - newTopic.startLearningDate).TotalMinutes;
+                    Console.WriteLine($"Completion date saved. {newTopic.completionDate.ToString("dd-MM-yyyy")}");
                     return true;
-                case 7:
+                case 5:
+                    // add a task and trigger a task menu
+                    AddNewTask(newTopic);
+                    return true;
+                case 6:
                     Topic.TopicToString(newTopic);
                     return true;
-                case 8:
+                    
+                case 7:
                     Console.WriteLine("Returning to the main menu ...");
                     return false;
                 default:
                     return true;
             }
         }
+        private static void AddNewTask(Topic topic)
+        {
+            Task newTask = new Task();
+            Console.WriteLine("Please name the task");
+            string taskTitle = Console.ReadLine();
+            newTask.title= taskTitle;
+            int id = topic.taskList.Count + 1;
+            newTask.id = id;
+            Console.WriteLine($"The task named {taskTitle} is created!");
+            //bool value to loop the task menu
+            bool displayTaskMenu = true;
+            while (displayTaskMenu)
+            {
+                displayTaskMenu = TaskMenu(newTask);
+            }
+            
+            
+            topic.taskList.Add(newTask);
+        }
+
+        private static bool TaskMenu(Task newTask)
+        {
+            Console.WriteLine("");
+            Console.WriteLine("Please choose an option: ");
+            Console.WriteLine("1) Add Description");
+            Console.WriteLine("2) Add Notes");
+            Console.WriteLine("3) Add Deadline");
+            Console.WriteLine("4) Mark Priority");
+            Console.WriteLine("5) Mark Done");
+            Console.WriteLine("6) Show all information of this task");
+            Console.WriteLine("7) Return to Topic Menu");
+            
+            int userTaskChoice = int.Parse(Console.ReadLine());
+
+            switch (userTaskChoice)
+            {
+                case 1:
+                    {
+                        Console.WriteLine("Add Description");
+                        string description = Console.ReadLine();
+                        newTask.description = description;
+                        Console.WriteLine($"Description saved! {newTask.description}");
+                        return true;
+                    }
+                case 2:
+                    {
+                        Console.WriteLine("Add Notes");
+                        string note = Console.ReadLine();
+                        newTask.notes.Add(note);
+                        Console.WriteLine($"Note saved! {string.Join(",",newTask.notes)}");
+                        return true;
+                    }
+                case 3:
+                    {
+                        Console.WriteLine("Add Deadline dd-MM-yyyy");
+                        DateTime deadline = DateTime.ParseExact(Console.ReadLine(), "dd-MM-yyyy", CultureInfo.InvariantCulture); ;
+                        newTask.deadline = deadline;
+                        Console.WriteLine($"Deadline saved! {newTask.deadline}");
+                        return true;
+                    }
+                case 4:
+                    {
+                        Console.WriteLine("Mark priority, choose one from the following: Urgent, Important, Unurgent, Unimportant");
+                        string priorityInput = Console.ReadLine();
+                        newTask.SetPriority(priorityInput);
+                        Console.WriteLine($"Priority set! {newTask.GetPriority()}");
+                        return true;
+                    }
+                case 5:
+                    {
+                        newTask.done = true;
+                        Console.WriteLine("Marked done");
+                        return true;
+                    }
+                case 6:
+                    {
+                        Task.TaskToString(newTask);
+                        return true;
+                    }
+                case 7:
+                    {
+                        Console.WriteLine("Returning to Topic Menu...");
+                        return false;
+                    }
+                default:
+                    {
+                        return true;
+                    }
+            }
+        }
 
     }
 
     public class Topic
+    {
+        // intiate fields
+        public int id;
+        public string title;
+        public string description;
+        public double estimatedTimeToMaster;
+        public double timeSpent;
+        public string source;
+        public DateTime startLearningDate;
+        public bool inProgress = true;
+        public DateTime completionDate;
+        public List<Task> taskList = new List<Task>();
+
+        public Topic(string title="", string description="", double estimatedTimeToMaster=0, string source="", DateTime completionDate= default(DateTime))
         {
-            // intiate fields
-            public int id;
-            public string title;
-            public string description;
-            public double estimatedTimeToMaster;
-            public double timeSpent;
-            public string source;
-            public DateTime startLearningDate;
-            public bool inProgress = true;
-            public DateTime completionDate;
+            this.title = title;
+            this.description = description;
+            this.estimatedTimeToMaster = estimatedTimeToMaster;
+            this.source = source;
+            this.completionDate = completionDate;
+        }
 
-            //???not sure if a constructor is needed
+        public static void TopicToString(Topic topic)
 
-            //properties
-            public string GetTitle()
-            {
-                return title;
-            }
-            public string GetDescription()
-            {
-                return description;
-            }
-            public double GetEstimatedTime()
-            {
-                return estimatedTimeToMaster;
-            }
-            public double GetTimeSpent()
-            {
-                return timeSpent;
-            }
-            public string GetSource()
-            {
-                return source;
-            }
-            public DateTime GetStartingDate()
-            {
-                return startLearningDate;
-            }
-            public bool GetInProgress()
-            {
-                return inProgress;
-            }
-            public DateTime GetCompletionDate()
-            {
-                return completionDate;
-            }
-
-            public static void TopicToString(Topic topic)
-            {
+        {
             Console.WriteLine($"Topic id: {topic.id}");
             Console.WriteLine($"Topic title: {topic.title}");
             Console.WriteLine($"Topic description: {topic.description}");
             Console.WriteLine($"Topic estimated time to master: {topic.estimatedTimeToMaster}");
-            Console.WriteLine($"Topic time spent: {topic.timeSpent}");
+            Console.WriteLine("Topic time spent: {0:0.00} minutes", topic.timeSpent);
             Console.WriteLine($"Topic source: {topic.source}");
             Console.WriteLine($"Topic starting date: {topic.startLearningDate.ToShortDateString()}");
             Console.WriteLine($"Topic in process: {topic.inProgress}");
             Console.WriteLine($"Topic completion date: {topic.completionDate.ToShortDateString()}");
         }
 
+    }
+
+    public class Task
+    {
+        // initial fields
+        public int id;
+        public string title;
+        public string description;
+        public List<string> notes = new List<string>();
+        public DateTime deadline;
+        public enum Priority 
+        {Urgent, Important, Unurgent, Unimportant};
+        public Priority thePriority;
+        public void SetPriority(string p)
+        {
+           Enum.TryParse(p, out thePriority);
         }
+
+        public  Priority GetPriority()
+        {
+            return thePriority;
+        }
+
+        public bool done = false;
+
+        public static void TaskToString(Task newTask)
+        {
+            string notesFromList = string.Join("\n", newTask.notes);
+            Console.WriteLine($"Task id: {newTask.id}\nTask title: {newTask.title}\nTask description: {newTask.description}\nTask notes: {notesFromList}\nTask Deadline: {newTask.deadline}\nTask priority: {newTask.GetPriority()}\nTask done: {newTask.done}");
+        }
+
+        public override string ToString()
+        {
+            string notesFromList = string.Join("\n", notes);
+            return $"Task{id},{title},{description},{notesFromList},{deadline.ToShortDateString()},{GetPriority()},{done}";
+        }
+
+    }
+
+    
     
 }
