@@ -1,3 +1,2 @@
-1,first,nonno,0,0,,15/06/2022,True,01/01/0001,Task1,first,,,01/01/0001,Urgent,False
-2,second,,0,0,,15/06/2022,True,01/01/0001,
-3,omg,,0,0,,15/06/2022,True,01/01/0001,Task1,first,hajeiooooooooooooooo,,01/01/0001,Urgent,False,Task2,second,,,01/01/0001,Urgent,False,Task3,third,,,01/01/0001,Urgent,False
+1,first,,0,0,,17/06/2022,True,01/01/0001,Task1,first,,first|second,01/01/0001,Urgent,False
+2,second,,0,0,,17/06/2022,True,01/01/0001,Task1,second,,,01/01/0001,Urgent,False,Task2,third,,,01/01/0001,Urgent,False,Task3,third,,,01/01/0001,Urgent,False

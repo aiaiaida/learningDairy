@@ -99,8 +99,8 @@ namespace LearningDiary_Aada_V1
                         readText[id - 1] = info;
                         File.WriteAllText(path, "");
                         File.AppendAllLines(path, readText);
-                        Console.WriteLine("Press any key to return to the main menu");
-                        Console.ReadKey();
+                        //Console.WriteLine("Press any key to return to the main menu");
+                        //Console.ReadKey();
                         return true;
                     }
                 case 4:
@@ -366,7 +366,11 @@ namespace LearningDiary_Aada_V1
                         Console.WriteLine("Please enter the id of the task to be deleted");
                         int id = int.Parse(Console.ReadLine());
                         newTopic.TaskList.RemoveAt(id - 1);
-                        //!!!!!!!!!!!!!!!    have to change the id after deletion  !!!!!!!!!!!!!!!!!!!!!
+                        while (id <= newTopic.TaskList.Count)
+                        {
+                            newTopic.TaskList[id-1].Id -= 1;
+                            id++;
+                        }
                         return true;
                     }
 
@@ -423,7 +427,7 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine("5) Mark Priority");
             Console.WriteLine("6) Mark Done");
             Console.WriteLine("7) Show all information of this task");
-            Console.WriteLine("0) Return to Topic Menu");
+            Console.WriteLine("0) Return to Task Menu");
             
             int userTaskChoice = int.Parse(Console.ReadLine());
 
@@ -491,7 +495,7 @@ namespace LearningDiary_Aada_V1
                 case 0:
                     {
                         // return to topic menu
-                        Console.WriteLine("Returning to Topic Menu...");
+                        Console.WriteLine("Returning to Task Menu...");
                         return false;
                     }
                 default:
@@ -576,17 +580,17 @@ namespace LearningDiary_Aada_V1
 
     public class Topic
     {
-        // intiate fields
-        public int Id;
-        public string Title;
-        public string Description;
-        public double EstimatedTimeToMaster;
-        public double TimeSpent;
-        public string Source;
-        public DateTime StartLearningDate;
-        public bool InProgress = true;
-        public DateTime CompletionDate;
-        public List<Task> TaskList = new List<Task>();
+        // intiate properties
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public double EstimatedTimeToMaster { get; set; }
+        public double TimeSpent { get; set; }
+        public string Source { get; set; }
+        public DateTime StartLearningDate { get; set; }
+        public bool InProgress { get; set; } = true;
+        public DateTime CompletionDate { get; set; }
+        public List<Task> TaskList { get; set; } = new List<Task>();
 
         public Topic(string title="", string description="", double estimatedTimeToMaster=0, string source="", DateTime completionDate= default(DateTime))
         {
@@ -624,14 +628,14 @@ namespace LearningDiary_Aada_V1
 
     public class Task
     {
-        // initial fields
-        public int Id;
-        public string Title;
-        public string Description;
-        public List<string> Notes = new List<string>();
-        public DateTime Deadline;
-        public bool Done = false;
-        
+        // initial properties
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public List<string> Notes { get; set; } = new List<string>();
+        public DateTime Deadline { get; set; }
+        public bool Done { get; set; } = false;
+
         //set enum priority
         public enum Priority 
         {Urgent, Important, Unurgent, Unimportant};
