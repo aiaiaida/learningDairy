@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
+using LearningDiary_Aada_V1.Models;
 
 namespace LearningDiary_Aada_V1
 {
@@ -10,21 +9,18 @@ namespace LearningDiary_Aada_V1
     {
         static void Main(string[] args)
         {
-            // a csv file to store all the title of topics
-            string path = @"C:\Users\Aada\source\repos\AWACADEMY\LearningDiaryAadaV1\topiclist.csv";
-
             // a bool value to display the MainMenu 
             bool displayMenu = true;
 
-            
+
             // main loop
             while (displayMenu)
             {
-                displayMenu = MainMenu(path);
+                displayMenu = MainMenu();
             }
         }
 
-        private static bool MainMenu(string path) 
+        private static bool MainMenu()
         {
             // content of the MainMenu
             Console.Clear();
@@ -37,27 +33,16 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine("5) Delete all topics");
             Console.WriteLine("6) Show the list of topics");
             Console.WriteLine("0) Exit");
-
             // change input string to int
             int userChoice = int.Parse(Console.ReadLine());
-            //dict of csv data
 
-            if (!File.Exists(path))
-            {
-                File.WriteAllText(path, "");
-            }
-            
-            string[] readText = File.ReadAllLines(path);
-            Dictionary<int, Topic> dict = ReadAndConvert(path);
-            
 
             // different code blocks for different choices
             switch (userChoice)
             {
                 case 1:
-                    // ask for title of the topic
-                    // call the method AddNewTopic to write it into txt file
-                    AddNewTopic(path, dict, ref readText); 
+                    // call the method AddNewTopic
+                    AddNewTopic();
                     return true;
 
                 case 2:
@@ -65,15 +50,17 @@ namespace LearningDiary_Aada_V1
                         // look up a topic based on id
                         Console.WriteLine("Please enter the id of the topic");
                         int id = int.Parse(Console.ReadLine());
-
-                        if (dict.ContainsKey(id))
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            Topic topic = dict[id];
-                            Topic.TopicToString(topic);
-                        }
-                        else
-                        {
-                            Console.WriteLine("Not found!");
+                            if (db.Topics.Any(topic => topic.Id == id))
+                            {
+                                var topicRes = db.Topics.Where(topic => topic.Id == id).Single();
+                                PrintTopic(topicRes);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Not Found!");
+                            }
                         }
                         Console.WriteLine("Press any key to return to the main menu");
                         Console.ReadKey();
@@ -85,22 +72,19 @@ namespace LearningDiary_Aada_V1
                         // to edit a topic
                         Console.WriteLine("Please enter the id of the topic you want to edit");
                         int id = int.Parse(Console.ReadLine());
-                        Topic topicToEdit = dict[id];
-                        bool displayEdit = true;
-                        while (displayEdit)
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            displayEdit = TopicMenu(ref topicToEdit, ref readText, ref dict);
+                            var topicToEdit = db.Topics.Where(topic => topic.Id.Equals(id)).FirstOrDefault();
+                        
+                            bool displayEdit = true;
+                            while (displayEdit)
+                            {
+                                 displayEdit = TopicMenu(topicToEdit);
+                            }
+                        
+                            db.Update(topicToEdit);
+                            db.SaveChanges();
                         }
-                        string taskInfo = string.Join(",", topicToEdit.TaskList);
-
-                        //original solution
-                        string info = $"{topicToEdit.Id},{topicToEdit.Title},{topicToEdit.Description},{topicToEdit.EstimatedTimeToMaster},{Math.Round(topicToEdit.TimeSpent, 2).ToString(CultureInfo.InvariantCulture.NumberFormat)},{topicToEdit.Source},{topicToEdit.StartLearningDate.ToShortDateString()},{topicToEdit.InProgress},{topicToEdit.CompletionDate.ToShortDateString()},{taskInfo}";
-
-                        readText[id - 1] = info;
-                        File.WriteAllText(path, "");
-                        File.AppendAllLines(path, readText);
-                        //Console.WriteLine("Press any key to return to the main menu");
-                        //Console.ReadKey();
                         return true;
                     }
                 case 4:
@@ -108,9 +92,12 @@ namespace LearningDiary_Aada_V1
                         //delete one topic
                         Console.WriteLine("Please enter the id of the topic: ");
                         int id = int.Parse(Console.ReadLine());
-
-                        DeleteAndUpdateId(readText, id, path);
-
+                        using (LearningDiaryContext db = new LearningDiaryContext())
+                        {
+                            var topicToRemove = db.Topics.Where(topic => topic.Id.Equals(id)).Single();
+                            db.Topics.Remove(topicToRemove);
+                            db.SaveChanges();
+                        }
                         Console.WriteLine("Deletion completed!");
                         Console.WriteLine("Press any key to return to the main menu");
                         Console.ReadKey();
@@ -120,21 +107,27 @@ namespace LearningDiary_Aada_V1
                 case 5:
                     {
                         //delete all topics by writing over it with a empty string
-                        File.WriteAllText(path, "");
+                        using (LearningDiaryContext db = new LearningDiaryContext())
+                        {
+                            //var topicList = db.Topics.Select(topic => topic).ToList();
+                            //topicList.ForEach(topic=>db.Topics.Remove(topic));
+                            db.Topics.RemoveRange(db.Topics);
+                            db.SaveChanges();
+                        }
                         Console.WriteLine("Deletion completed");
                         Console.WriteLine("Press any key to return to the main menu");
                         Console.ReadKey();
                         return true;
-                       
+
                     }
 
                 case 6:
                     {
                         // print all topics in topic format
-                        foreach (KeyValuePair<int,Topic> pair in dict)
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            Topic tempTopic = pair.Value;
-                            Topic.TopicToString(tempTopic);
+                            var allTopics = db.Topics.Select(topic => topic).ToList();
+                            allTopics.ForEach(topic => PrintTopic(topic));
                         }
                         Console.WriteLine("Press any key to return to the main menu");
                         Console.ReadKey();
@@ -151,42 +144,62 @@ namespace LearningDiary_Aada_V1
         }
 
         // method to write new topic into csv file
-        private static void AddNewTopic(string path, Dictionary<int,Topic> dict, ref string[] readText) 
+        private static void AddNewTopic()
         {
             Topic newTopic = new Topic();
-            // read the id from the file
-            if (File.Exists(path) && new FileInfo(path).Length != 0)
+            
+            using (LearningDiaryContext db = new LearningDiaryContext())
             {
-                // get the last key and increment by 1 => new id
-                newTopic.Id = dict.Keys.Last() + 1;
-            }
-            else
-            {
-                newTopic.Id = 1;
-            }
+                Console.WriteLine("Please give me a title of this topic");
+                string topicTitle = Console.ReadLine();
+                newTopic.Title = topicTitle;
+                Console.WriteLine($"The topic {newTopic.Title} is created!");
 
-            Console.WriteLine($"The topic is created!");
-            
-            // set starting date immediately when the topic is created
-            newTopic.StartLearningDate = DateTime.Now;
+                var allTopics = db.Topics.Select(topic => topic);
+                if (!allTopics.Any())
+                {
+                    newTopic.Id = 1;
+                }
+                else
+                {
+                    newTopic.Id = db.Topics.Max(topic => (int)topic.Id) + 1;
+                }
 
-            //a topic menu loop
-            bool displayTopicMenu = true;
-            while (displayTopicMenu)
-            {
-                displayTopicMenu = TopicMenu(ref newTopic,ref readText, ref dict);
+                // set starting date immediately when the topic is created
+                newTopic.StartLearningDate = DateTime.Now;
+                db.Topics.Add(newTopic);
+                db.SaveChanges();
+
+                //a topic menu loop
+                bool displayTopicMenu = true;
+                while (displayTopicMenu)
+                {
+                    displayTopicMenu = TopicMenu(newTopic);
+                }
+                db.Topics.Update(newTopic);
+                db.SaveChanges();
             }
-            
-            string taskInfo = string.Join(",", newTopic.TaskList);
-            
-            //original solution
-            string info = $"{newTopic.Id},{newTopic.Title},{newTopic.Description},{newTopic.EstimatedTimeToMaster},{Math.Round(newTopic.TimeSpent, 2).ToString(CultureInfo.InvariantCulture.NumberFormat)},{newTopic.Source},{newTopic.StartLearningDate.ToShortDateString()},{newTopic.InProgress},{newTopic.CompletionDate.ToShortDateString()},{taskInfo}";
-            
-            // call the method to save into file
-            AppendIntoFile(path, info);
         }
 
-        private static bool TopicMenu(ref Topic newTopic, ref string[] readText, ref Dictionary<int,Topic> dict)
+        private static void PrintTopic(Topic topic)
+        {
+            Console.WriteLine($"Topic id: {topic.Id}");
+            Console.WriteLine($"Topic title: {topic.Title}");
+            Console.WriteLine($"Topic description: {topic.Description}");
+            Console.WriteLine($"Topic estimated time to master: {topic.EstimatedTimeToMaster}");
+            Console.WriteLine("Topic time spent: {0:0.00} minutes", topic.TimeSpent);
+            Console.WriteLine($"Topic source: {topic.Source}");
+            Console.WriteLine($"Topic starting date: {topic.StartLearningDate}");
+            Console.WriteLine($"Topic in process: {topic.InProgress}");
+            Console.WriteLine($"Topic completion date: {topic.CompletionDate}");
+            Console.WriteLine("\n");
+        }
+
+        private static void PrintTask(Task task)
+        {
+            Console.WriteLine($"Task id: {task.Id}\nTask title: {task.Title}\nTask description: {task.Description}\nTask notes: \nTask Deadline: {task.Deadline}\nTask priority: {task.Priority}\nTask done: {task.Done}\n");
+        }
+        private static bool TopicMenu(Topic newTopic)
         {
             Console.WriteLine("");
             Console.WriteLine("Please choose an option: ");
@@ -226,7 +239,7 @@ namespace LearningDiary_Aada_V1
                     {
                         // set estimated time 
                         Console.WriteLine("Please enter the estimated time to master in minute unit");
-                        double userEstimated = Convert.ToDouble(Console.ReadLine());
+                        int userEstimated = int.Parse(Console.ReadLine());
                         newTopic.EstimatedTimeToMaster = userEstimated;
                         Console.WriteLine($"Estimated time saved. {newTopic.EstimatedTimeToMaster}");
                         return true;
@@ -252,14 +265,15 @@ namespace LearningDiary_Aada_V1
                         // set in progress automatically to false
                         // and calculate time spent on the topic
                         newTopic.InProgress = false;
-                        newTopic.TimeSpent = (newTopic.CompletionDate - newTopic.StartLearningDate).TotalMinutes;
+                        newTopic.TimeSpent = (int?) (newTopic.CompletionDate.Value - newTopic.StartLearningDate.Value).TotalMinutes;
+                        
 
                         // congrats the user if timeSpent less than estimated master time
                         if (newTopic.EstimatedTimeToMaster >= newTopic.TimeSpent)
                         {
                             Console.WriteLine("Congratulations! You are faster than you thought!");
                         }
-                        Console.WriteLine($"Completion date saved. {newTopic.CompletionDate.ToString("dd-MM-yyyy")}");
+                        Console.WriteLine($"Completion date saved. {newTopic.CompletionDate}");
                         return true;
                     }
                     
@@ -269,7 +283,7 @@ namespace LearningDiary_Aada_V1
                         bool displayManageTasks = true;
                         while (displayManageTasks)
                         {
-                            displayManageTasks = ManageTasks(newTopic, ref readText, ref dict);
+                            displayManageTasks = ManageTasks(newTopic);
                         }
                         
                         return true;
@@ -278,7 +292,7 @@ namespace LearningDiary_Aada_V1
                 case 7:
                     {
                         // show information of the topic
-                        Topic.TopicToString(newTopic);
+                        
                         return true;
                     }
                     
@@ -296,7 +310,7 @@ namespace LearningDiary_Aada_V1
             }
         }
 
-        private static bool ManageTasks(Topic newTopic, ref string[] readText, ref Dictionary<int, Topic> dict)
+        private static bool ManageTasks(Topic newTopic)
         {
             Console.WriteLine("");
             Console.WriteLine("Please choose an option: ");
@@ -305,7 +319,7 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine("3) Edit a task");
             Console.WriteLine("4) Delete a task");
             Console.WriteLine("5) Delete all tasks");
-            Console.WriteLine("6) Show information of this topic");
+            Console.WriteLine("6) Show information of all tasks of this topic");
             Console.WriteLine("0) Return to the topic menu");
 
             int taskChoice = int.Parse(Console.ReadLine());
@@ -323,22 +337,20 @@ namespace LearningDiary_Aada_V1
                         // look up a task
                         Console.WriteLine("Please enter the id of the task");
                         int id = int.Parse(Console.ReadLine());
-
-                        if (id <= newTopic.TaskList.Count)
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            Console.WriteLine("Found!");
-                            for(int i=0; i<newTopic.TaskList.Count; i++)
+                            
+                            if (db.Tasks.Any(task => task.Id == id) && db.Topics.Any(topic=> topic.Id == newTopic.Id))
                             {
-                                if (i+1 == id)
-                                {
-                                    Task.TaskToString(newTopic.TaskList[i]);
-                                }
+                                var taskRes = db.Tasks.Where(task => task.Id.Equals(id)).Single();
+                                PrintTask(taskRes);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Not Found!");
                             }
                         }
-                        else
-                        {
-                            Console.WriteLine("Not found!");
-                        }
+                        
                         Console.WriteLine("Press any key to return");
                         Console.ReadKey();
                         return true;
@@ -350,13 +362,18 @@ namespace LearningDiary_Aada_V1
                         //Edit a task
                         Console.WriteLine("Enter the id of the task you want to modify");
                         int id = int.Parse(Console.ReadLine());
-                        Task newTask = newTopic.TaskList[id - 1];
-                        bool displayTaskMenu = true;
-                        while (displayTaskMenu)
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            displayTaskMenu = TaskMenu(newTask);
+                            var taskToEdit = db.Tasks.Where(task => task.Id.Equals(id)).FirstOrDefault();
+
+                            bool displayEdit = true;
+                            while (displayEdit)
+                            {
+                                displayEdit = TaskMenu(taskToEdit);
+                            }
+                            db.Tasks.Update(taskToEdit);
+                            db.SaveChanges();
                         }
-                        newTopic.TaskList[id - 1] = newTask;
                         return true;
                     }
 
@@ -365,26 +382,43 @@ namespace LearningDiary_Aada_V1
                         //Delete one task
                         Console.WriteLine("Please enter the id of the task to be deleted");
                         int id = int.Parse(Console.ReadLine());
-                        newTopic.TaskList.RemoveAt(id - 1);
-                        while (id <= newTopic.TaskList.Count)
+                        using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            newTopic.TaskList[id-1].Id -= 1;
-                            id++;
+                            var taskToRemove = db.Tasks.Where(task => task.Id.Equals(id)).Single();
+                            db.Tasks.Remove(taskToRemove);
+                            db.SaveChanges();
                         }
+                        Console.WriteLine("Deletion completed!");
+                        Console.WriteLine("Press any key to return to the main menu");
+                        Console.ReadKey();
                         return true;
                     }
 
                 case 5:
                     {
                         // Delete all tasks
-                        newTopic.TaskList.Clear();
+                        using (LearningDiaryContext db = new LearningDiaryContext())
+                        {
+                            var tasksToRemove = db.Tasks.Where(task => task.TopicId.Equals(newTopic.Id)).ToList();
+                            tasksToRemove.ForEach(task=> db.Tasks.Remove(task));
+                            db.SaveChanges();
+                        }
+                        Console.WriteLine("Deletion completed");
+                        Console.WriteLine("Press any key to return to the main menu");
+                        Console.ReadKey();
                         return true;
                     }
 
                 case 6:
                     {
                         // Show info of this topic
-                        Topic.TopicToString(newTopic);
+                        using (LearningDiaryContext db = new LearningDiaryContext())
+                        {
+                            var allTasks = db.Tasks.Where(task => task.TopicId == newTopic.Id).ToList();
+                            allTasks.ForEach(task => PrintTask(task));
+                        }
+                        Console.WriteLine("Press any key to return to the main menu");
+                        Console.ReadKey();
                         return true;
                     }
 
@@ -402,20 +436,32 @@ namespace LearningDiary_Aada_V1
         private static void AddNewTask(Topic topic)
         {
             Task newTask = new Task();
-
-            // automatically calculate the id
-            newTask.Id = topic.TaskList.Count + 1;
             Console.WriteLine($"The new task is created!");
-           
-            //bool value to loop the task menu
-            bool displayTaskMenu = true;
-            while (displayTaskMenu)
+            using (LearningDiaryContext db = new LearningDiaryContext())
             {
-                displayTaskMenu = TaskMenu(newTask);
-            }  
-            topic.TaskList.Add(newTask);
+                var allTasks = db.Tasks.Select(task => task);
+                if (!allTasks.Any())
+                {
+                    newTask.Id = 1;
+                }
+                else
+                {
+                    newTask.Id = db.Tasks.Max(task => (int)task.Id) + 1;
+                }
+                //a task menu loop
+                bool displayTaskMenu = true;
+                while (displayTaskMenu)
+                {
+                    displayTaskMenu = TaskMenu(newTask);
+                }
+                // add the task into topic
+                //calculate the id
+                newTask.TopicId = topic.Id;
+                db.Tasks.Add(newTask);
+                db.SaveChanges();
+            }
         }
-
+        
         private static bool TaskMenu(Task newTask)
         {
             Console.WriteLine("");
@@ -457,8 +503,8 @@ namespace LearningDiary_Aada_V1
                         // add notes into list
                         Console.WriteLine("Add Notes");
                         string note = Console.ReadLine();
-                        newTask.Notes.Add(note);
-                        Console.WriteLine($"Note saved! {string.Join("|",newTask.Notes)}");
+                        // newTask.Notes.Add(note);
+                        // Console.WriteLine($"Note saved! {string.Join("|",newTask.Notes)}");
                         return true;
                     }
                 case 4:
@@ -475,8 +521,8 @@ namespace LearningDiary_Aada_V1
                         // mark priority with a specific value
                         Console.WriteLine("Mark priority, choose one from the following: Urgent, Important, Unurgent, Unimportant");
                         string priorityInput = Console.ReadLine();
-                        newTask.SetPriority(priorityInput);
-                        Console.WriteLine($"Priority set! {newTask.GetPriority()}");
+                        newTask.Priority= priorityInput;
+                        Console.WriteLine($"Priority set! {newTask.Priority}");
                         return true;
                     }
                 case 6:
@@ -489,7 +535,7 @@ namespace LearningDiary_Aada_V1
                 case 7:
                     {
                         // show information of the task
-                        Task.TaskToString(newTask);
+                        
                         return true;
                     }
                 case 0:
@@ -504,168 +550,6 @@ namespace LearningDiary_Aada_V1
                     }
             }
         }
-
-        
-        private static Dictionary<int, Topic> ReadAndConvert(string path)
-        {
-            string[] readText = File.ReadAllLines(path);
-            Dictionary<int, Topic> dicTopic = new Dictionary<int, Topic>();
-            for (int i = 0; i < readText.Length; i++)
-            {
-                string[] splitted = readText[i].Split(",");
-
-                int key = int.Parse(splitted[0]);
-                Topic tempTopic = new Topic(splitted[1], splitted[2], double.Parse(splitted[3]), splitted[5], DateTime.Parse(splitted[8]));
-                tempTopic.Id = int.Parse(splitted[0]);
-                tempTopic.TimeSpent = double.Parse(splitted[4], System.Globalization.CultureInfo.InvariantCulture);
-                tempTopic.StartLearningDate = DateTime.ParseExact(splitted[6], "dd/MM/yyyy", null);
-                tempTopic.InProgress = bool.Parse(splitted[7]);
-                tempTopic.TaskList = new List<Task>();
-
-                int numOfCol = 9;
-                while(numOfCol < splitted.Length-1)
-                {
-                    Task task = new Task();
-                    task.Id = int.Parse(splitted[numOfCol].Substring(4, splitted[0].Length));
-                    task.Title = splitted[numOfCol + 1];
-                    task.Description = splitted[numOfCol + 2];
-                    task.Notes = splitted[numOfCol + 3].Split("|").ToList();
-                    task.Deadline = DateTime.Parse(splitted[numOfCol + 4]);
-                    task.SetPriority(splitted[numOfCol + 5]);
-                    task.Done = bool.Parse(splitted[numOfCol + 6]);
-                    tempTopic.TaskList.Add(task);
-                    numOfCol += 7;
-                }
-                dicTopic.Add(key, tempTopic);
-            }
-            return dicTopic;
-        }
-        
-        private static void DeleteAndUpdateId(string[] readText, int idToDelete, string path)
-        {
-            //convert to list so more convenient to delete topics
-            List<string> linesToWrite = readText.ToList();
-            //bool value to update id after deleted item
-            bool idUpdate = false;
-            for (int i = 0; i < readText.Length; i++)
-            {
-                // access each different point
-                string[] splitted = readText[i].Split(',');
-                if (int.Parse(splitted[0]) == idToDelete)
-                {
-                    idUpdate = true;
-                    linesToWrite.RemoveAt(i);
-                    continue;
-                }
-                //update id for every item after the deleted one
-                if (idUpdate)
-                {
-                    int idToUp = int.Parse(splitted[0]);
-                    idToUp -= 1;
-                    splitted[0] = Convert.ToString(idToUp);
-                    linesToWrite[i - 1] = String.Join(",", splitted);
-                }
-            }
-
-            File.WriteAllLines(path, linesToWrite);
-        }
-
-        private static void AppendIntoFile(string path, string info)
-        {
-            File.AppendAllText(path, info + Environment.NewLine);
-        }
-
-
     }
+ }
 
-    public class Topic
-    {
-        // intiate properties
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public double EstimatedTimeToMaster { get; set; }
-        public double TimeSpent { get; set; }
-        public string Source { get; set; }
-        public DateTime StartLearningDate { get; set; }
-        public bool InProgress { get; set; } = true;
-        public DateTime CompletionDate { get; set; }
-        public List<Task> TaskList { get; set; } = new List<Task>();
-
-        public Topic(string title="", string description="", double estimatedTimeToMaster=0, string source="", DateTime completionDate= default(DateTime))
-        {
-            this.Title = title;
-            this.Description = description;
-            this.EstimatedTimeToMaster = estimatedTimeToMaster;
-            this.Source = source;
-            this.CompletionDate = completionDate;
-        }
-
-        public static void TopicToString(Topic topic)
-
-        {
-            Console.WriteLine($"Topic id: {topic.Id}");
-            Console.WriteLine($"Topic title: {topic.Title}");
-            Console.WriteLine($"Topic description: {topic.Description}");
-            Console.WriteLine($"Topic estimated time to master: {topic.EstimatedTimeToMaster}");
-            Console.WriteLine("Topic time spent: {0:0.00} minutes", Math.Round(topic.TimeSpent, 2).ToString(CultureInfo.InvariantCulture.NumberFormat));
-            Console.WriteLine($"Topic source: {topic.Source}");
-            Console.WriteLine($"Topic starting date: {topic.StartLearningDate.ToShortDateString()}");
-            Console.WriteLine($"Topic in process: {topic.InProgress}");
-            Console.WriteLine($"Topic completion date: {topic.CompletionDate.ToShortDateString()}");
-            Console.WriteLine("\n");
-
-            // also show the task info included in the topic
-            if (topic.TaskList.Count != 0)
-            {
-                foreach (Task taskInTopic in topic.TaskList)
-                {
-                    Task.TaskToString(taskInTopic);
-                }
-            }
-        }
-    }
-
-    public class Task
-    {
-        // initial properties
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public List<string> Notes { get; set; } = new List<string>();
-        public DateTime Deadline { get; set; }
-        public bool Done { get; set; } = false;
-
-        //set enum priority
-        public enum Priority 
-        {Urgent, Important, Unurgent, Unimportant};
-        public Priority thePriority;
-        public void SetPriority(string p)
-        {
-           Enum.TryParse(p, out thePriority);
-        }
-        public  Priority GetPriority()
-        {
-            return thePriority;
-        }
-
-        
-        // used to show information of the task
-        public static void TaskToString(Task newTask)
-        {
-            string notesFromList = string.Join("\n", newTask.Notes);
-            Console.WriteLine($"Task id: {newTask.Id}\nTask title: {newTask.Title}\nTask description: {newTask.Description}\nTask notes: {notesFromList}\nTask Deadline: {newTask.Deadline}\nTask priority: {newTask.GetPriority()}\nTask done: {newTask.Done}\n");
-        }
-
-        // used to write into csv file
-        public override string ToString()
-        {
-            string notesFromList = string.Join("|", Notes);
-            return $"Task{Id},{Title},{Description},{notesFromList},{Deadline.ToShortDateString()},{GetPriority()},{Done}";
-        }
-
-    }
-
-    
-    
-}
