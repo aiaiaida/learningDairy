@@ -48,18 +48,39 @@ namespace LearningDiary_Aada_V1
                 case 2:
                     {
                         // look up a topic based on id
-                        Console.WriteLine("Please enter the id of the topic");
-                        int id = int.Parse(Console.ReadLine());
+                        Console.WriteLine("Please enter the id or title to search a topic\nFormat:id-123 or title-mytopicname, but not at the same time");
+                        string[] splitted = Console.ReadLine().Split("-");
                         using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            if (db.Topics.Any(topic => topic.Id == id))
+                            if (splitted[0].Contains("id"))
                             {
-                                var topicRes = db.Topics.Where(topic => topic.Id == id).Single();
-                                PrintTopic(topicRes);
+                                int id = int.Parse(splitted[1]);
+                                if (db.Topics.Any(topic => topic.Id == id))
+                                {
+                                    var topicRes = db.Topics.Where(topic => topic.Id == id).Single();
+                                    PrintTopic(topicRes);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Not Found!");
+                                }
+                            }
+                            else if (splitted[0].Contains("title"))
+                            {
+                                string title = splitted[1];
+                                if (db.Topics.Any(topic => topic.Title == title))
+                                {
+                                    var topicRes = db.Topics.Where(topic => topic.Title == title).Single();
+                                    PrintTopic(topicRes);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Not Found!");
+                                }
                             }
                             else
                             {
-                                Console.WriteLine("Not Found!");
+                                Console.WriteLine("You entered in wrong format");
                             }
                         }
                         Console.WriteLine("Press any key to return to the main menu");
@@ -95,6 +116,8 @@ namespace LearningDiary_Aada_V1
                         using (LearningDiaryContext db = new LearningDiaryContext())
                         {
                             var topicToRemove = db.Topics.Where(topic => topic.Id.Equals(id)).Single();
+                            var tasksToDelete = db.Tasks.Where(task=>task.TopicId == id);
+                            db.Tasks.RemoveRange(tasksToDelete);
                             db.Topics.Remove(topicToRemove);
                             db.SaveChanges();
                         }
@@ -109,8 +132,8 @@ namespace LearningDiary_Aada_V1
                         //delete all topics by writing over it with a empty string
                         using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            //var topicList = db.Topics.Select(topic => topic).ToList();
-                            //topicList.ForEach(topic=>db.Topics.Remove(topic));
+                            db.Notes.RemoveRange(db.Notes);
+                            db.Tasks.RemoveRange(db.Tasks);
                             db.Topics.RemoveRange(db.Topics);
                             db.SaveChanges();
                         }
@@ -147,14 +170,13 @@ namespace LearningDiary_Aada_V1
         private static void AddNewTopic()
         {
             Topic newTopic = new Topic();
-            
+            Console.WriteLine("Please give me a title of this topic");
+            string topicTitle = Console.ReadLine();
+            newTopic.Title = topicTitle;
+            Console.WriteLine($"The topic {newTopic.Title} is created!");
+
             using (LearningDiaryContext db = new LearningDiaryContext())
             {
-                Console.WriteLine("Please give me a title of this topic");
-                string topicTitle = Console.ReadLine();
-                newTopic.Title = topicTitle;
-                Console.WriteLine($"The topic {newTopic.Title} is created!");
-
                 var allTopics = db.Topics.Select(topic => topic);
                 if (!allTopics.Any())
                 {
@@ -167,6 +189,7 @@ namespace LearningDiary_Aada_V1
 
                 // set starting date immediately when the topic is created
                 newTopic.StartLearningDate = DateTime.Now;
+
                 db.Topics.Add(newTopic);
                 db.SaveChanges();
 
@@ -183,6 +206,7 @@ namespace LearningDiary_Aada_V1
 
         private static void PrintTopic(Topic topic)
         {
+            Console.WriteLine("\n");
             Console.WriteLine($"Topic id: {topic.Id}");
             Console.WriteLine($"Topic title: {topic.Title}");
             Console.WriteLine($"Topic description: {topic.Description}");
@@ -192,12 +216,25 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine($"Topic starting date: {topic.StartLearningDate}");
             Console.WriteLine($"Topic in process: {topic.InProgress}");
             Console.WriteLine($"Topic completion date: {topic.CompletionDate}");
-            Console.WriteLine("\n");
+
+            using (LearningDiaryContext db = new LearningDiaryContext())
+            {
+                var tasksToPrint = db.Tasks.Where(task=>task.TopicId == topic.Id);
+                if (tasksToPrint.Any())
+                {
+                    tasksToPrint.ToList().ForEach(task => PrintTask(task));
+                }
+            }
         }
 
         private static void PrintTask(Task task)
         {
-            Console.WriteLine($"Task id: {task.Id}\nTask title: {task.Title}\nTask description: {task.Description}\nTask notes: \nTask Deadline: {task.Deadline}\nTask priority: {task.Priority}\nTask done: {task.Done}\n");
+            using (LearningDiaryContext db = new LearningDiaryContext())
+            {
+                var notes = db.Notes.Where(Note => Note.TaskId == task.Id).ToList();
+                string noteStr = String.Join(",", notes.Select(note=>note.Note1));
+                Console.WriteLine($"\nTask id: {task.Id}\nTask Topic_id: {task.TopicId}\nTask title: {task.Title}\nTask description: {task.Description}\nTask notes: {noteStr}\nTask Deadline: {task.Deadline}\nTask priority: {task.Priority}\nTask done: {task.Done}");
+            } 
         }
         private static bool TopicMenu(Topic newTopic)
         {
@@ -291,7 +328,8 @@ namespace LearningDiary_Aada_V1
                     
                 case 7:
                     {
-                        // show information of the topic
+                        // show information of this topic
+                        PrintTopic(newTopic);
                         
                         return true;
                     }
@@ -335,22 +373,41 @@ namespace LearningDiary_Aada_V1
                 case 2:
                     {
                         // look up a task
-                        Console.WriteLine("Please enter the id of the task");
-                        int id = int.Parse(Console.ReadLine());
+                        Console.WriteLine("Please enter the id or title to search a topic\nFormat:id-123 or title-mytopicname, but not at the same time");
+                        string[] splitted = Console.ReadLine().Split("-");
                         using (LearningDiaryContext db = new LearningDiaryContext())
                         {
-                            
-                            if (db.Tasks.Any(task => task.Id == id) && db.Topics.Any(topic=> topic.Id == newTopic.Id))
+                            if (splitted[0].Contains("id"))
                             {
-                                var taskRes = db.Tasks.Where(task => task.Id.Equals(id)).Single();
-                                PrintTask(taskRes);
+                                int id = int.Parse(splitted[1]);
+                                if (db.Tasks.Any(task => task.Id == id))
+                                {
+                                    var taskRes = db.Tasks.Where(task => task.Id == id).Single();
+                                    PrintTask(taskRes);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Not Found!");
+                                }
+                            }
+                            else if (splitted[0].Contains("title"))
+                            {
+                                string title = splitted[1];
+                                if (db.Tasks.Any(task => task.Title == title))
+                                {
+                                    var taskRes = db.Tasks.Where(task => task.Title == title).Single();
+                                    PrintTask(taskRes);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Not Found!");
+                                }
                             }
                             else
                             {
-                                Console.WriteLine("Not Found!");
+                                Console.WriteLine("You entered in wrong format");
                             }
                         }
-                        
                         Console.WriteLine("Press any key to return");
                         Console.ReadKey();
                         return true;
@@ -369,7 +426,7 @@ namespace LearningDiary_Aada_V1
                             bool displayEdit = true;
                             while (displayEdit)
                             {
-                                displayEdit = TaskMenu(taskToEdit);
+                                displayEdit = TaskMenu(taskToEdit,newTopic);
                             }
                             db.Tasks.Update(taskToEdit);
                             db.SaveChanges();
@@ -411,7 +468,7 @@ namespace LearningDiary_Aada_V1
 
                 case 6:
                     {
-                        // Show info of this topic
+                        // Show info of all tasks of this topic
                         using (LearningDiaryContext db = new LearningDiaryContext())
                         {
                             var allTasks = db.Tasks.Where(task => task.TopicId == newTopic.Id).ToList();
@@ -436,9 +493,12 @@ namespace LearningDiary_Aada_V1
         private static void AddNewTask(Topic topic)
         {
             Task newTask = new Task();
-            Console.WriteLine($"The new task is created!");
+            
             using (LearningDiaryContext db = new LearningDiaryContext())
             {
+                Console.WriteLine("Please enter a title for the task");
+                newTask.Title = Console.ReadLine();
+                
                 var allTasks = db.Tasks.Select(task => task);
                 if (!allTasks.Any())
                 {
@@ -448,25 +508,28 @@ namespace LearningDiary_Aada_V1
                 {
                     newTask.Id = db.Tasks.Max(task => (int)task.Id) + 1;
                 }
+                newTask.TopicId = topic.Id;
+                db.Tasks.Add(newTask);
+                db.SaveChanges();
+                Console.WriteLine($"The new task is created!");
                 //a task menu loop
                 bool displayTaskMenu = true;
                 while (displayTaskMenu)
                 {
-                    displayTaskMenu = TaskMenu(newTask);
+                    displayTaskMenu = TaskMenu(newTask, topic);
                 }
                 // add the task into topic
                 //calculate the id
-                newTask.TopicId = topic.Id;
-                db.Tasks.Add(newTask);
+                db.Tasks.Update(newTask);
                 db.SaveChanges();
             }
         }
         
-        private static bool TaskMenu(Task newTask)
+        private static bool TaskMenu(Task newTask, Topic topic)
         {
             Console.WriteLine("");
             Console.WriteLine("Please choose an option: ");
-            Console.WriteLine("1) Title");
+            Console.WriteLine("1) Edit Title");
             Console.WriteLine("2) Description");
             Console.WriteLine("3) Notes");
             Console.WriteLine("4) Deadline");
@@ -483,7 +546,7 @@ namespace LearningDiary_Aada_V1
                 case 1:
                     {
                         // set description
-                        Console.WriteLine("Title for the task");
+                        Console.WriteLine("Please Enter Title for the Task");
                         string title = Console.ReadLine();
                         newTask.Title = title;
                         Console.WriteLine($"Title saved! {newTask.Title}");
@@ -492,7 +555,7 @@ namespace LearningDiary_Aada_V1
                 case 2:
                     {
                         // set description
-                        Console.WriteLine("Add Description");
+                        Console.WriteLine("Please Enter Description");
                         string description = Console.ReadLine();
                         newTask.Description = description;
                         Console.WriteLine($"Description saved! {newTask.Description}");
@@ -501,16 +564,34 @@ namespace LearningDiary_Aada_V1
                 case 3:
                     {
                         // add notes into list
-                        Console.WriteLine("Add Notes");
+                        Console.WriteLine("Please Enter Notes");
                         string note = Console.ReadLine();
-                        // newTask.Notes.Add(note);
-                        // Console.WriteLine($"Note saved! {string.Join("|",newTask.Notes)}");
-                        return true;
+                        Note newNote = new Note();
+                        newNote.Note1 = note;
+                        newNote.TaskId = newTask.Id;
+                        newNote.TopicId = topic.Id;
+                        using (LearningDiaryContext db = new LearningDiaryContext())
+                        {
+                            var allNotes = db.Notes.Select(note => note);
+                            if (!allNotes.Any())
+                            {
+                                newNote.Id = 1;
+                            }
+                            else
+                            {
+                                newNote.Id = db.Notes.Max(note => (int)note.Id) + 1;
+                            }
+
+                            db.Notes.Add(newNote);
+                            db.SaveChanges();
+                        }
+                        
+                            return true;
                     }
                 case 4:
                     {
                         // add deadline date 
-                        Console.WriteLine("Add Deadline dd-MM-yyyy");
+                        Console.WriteLine("Please Enter Deadline dd-MM-yyyy");
                         DateTime deadline = DateTime.Parse(Console.ReadLine()); ;
                         newTask.Deadline = deadline;
                         Console.WriteLine($"Deadline saved! {newTask.Deadline}");
@@ -535,7 +616,7 @@ namespace LearningDiary_Aada_V1
                 case 7:
                     {
                         // show information of the task
-                        
+                        PrintTask(newTask);
                         return true;
                     }
                 case 0:
