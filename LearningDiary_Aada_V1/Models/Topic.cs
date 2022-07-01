@@ -10,7 +10,7 @@ namespace LearningDiary_Aada_V1.Models
         public Topic()
         {
             Notes = new HashSet<Note>();
-            Tasks = new HashSet<Task>();
+            TaskInTopics = new HashSet<TaskInTopic>();
         }
 
         public int Id { get; set; }
@@ -24,6 +24,6 @@ namespace LearningDiary_Aada_V1.Models
         public DateTime? CompletionDate { get; set; }
 
         public virtual ICollection<Note> Notes { get; set; }
-        public virtual ICollection<Task> Tasks { get; set; }
+        public virtual ICollection<TaskInTopic> TaskInTopics { get; set; }
     }
 }

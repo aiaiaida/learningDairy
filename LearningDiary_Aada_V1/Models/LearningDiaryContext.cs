@@ -18,7 +18,7 @@ namespace LearningDiary_Aada_V1.Models
         }
 
         public virtual DbSet<Note> Notes { get; set; }
-        public virtual DbSet<Task> Tasks { get; set; }
+        public virtual DbSet<TaskInTopic> TaskInTopics { get; set; }
         public virtual DbSet<Topic> Topics { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -62,9 +62,9 @@ namespace LearningDiary_Aada_V1.Models
                     .HasConstraintName("FK_Note_Topic");
             });
 
-            modelBuilder.Entity<Task>(entity =>
+            modelBuilder.Entity<TaskInTopic>(entity =>
             {
-                entity.ToTable("Task");
+                entity.ToTable("TaskInTopic");
 
                 entity.Property(e => e.Id).ValueGeneratedNever();
 
@@ -86,7 +86,7 @@ namespace LearningDiary_Aada_V1.Models
                 entity.Property(e => e.TopicId).HasColumnName("Topic_id");
 
                 entity.HasOne(d => d.Topic)
-                    .WithMany(p => p.Tasks)
+                    .WithMany(p => p.TaskInTopics)
                     .HasForeignKey(d => d.TopicId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Task_Topic");

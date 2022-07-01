@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 namespace LearningDiary_Aada_V1.Models
 {
-    public partial class Task
+    public partial class TaskInTopic
     {
-        public Task()
+        public TaskInTopic()
         {
             Notes = new HashSet<Note>();
         }
