@@ -3,9 +3,7 @@ using System.Linq;
 using LearningDiary_Aada_V1.Models;
 using ClassLibraryForLearningDiary;
 using System.Threading.Tasks;
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 
 namespace LearningDiary_Aada_V1
 {
@@ -54,20 +52,18 @@ namespace LearningDiary_Aada_V1
                             bool displayTopicMenu = true;
                             while (displayTopicMenu)
                             {
-                                Console.WriteLine("Here i am in the display loop");
-                                Console.WriteLine(DateTime.Now); 
+                                //Console.WriteLine("Here i am in the display loop");
+                                //Console.WriteLine(DateTime.Now); 
                                 displayTopicMenu = TopicMenu(newTopic.Result);
                                 newTopic.Wait();
                             }
                             db.Topics.Update(newTopic.Result);
                             await db.SaveChangesAsync();
-                            Console.WriteLine("changes are once again saved");
-                            Console.WriteLine(DateTime.Now);
+                            
+                            // print the time
+                            //Console.WriteLine("changes are once again saved");
+                            //Console.WriteLine(DateTime.Now);
                         }
-
-                        // print the time
-                        
-
                         Console.ReadKey();
                         return true;
                     case 2:
@@ -165,8 +161,8 @@ namespace LearningDiary_Aada_V1
             using (LearningDiaryContext db = new LearningDiaryContext())
             {
                 var allTopics = await (from topic in db.Topics select topic).ToListAsync();
-                Console.WriteLine("database read");
-                Console.WriteLine(DateTime.Now);
+                //Console.WriteLine("database read");
+                //Console.WriteLine(DateTime.Now);
                 if (!allTopics.Any())
                 {
                     newTopic.Id = 1;
@@ -182,8 +178,8 @@ namespace LearningDiary_Aada_V1
                 //var t = Task.Run(() => db.SaveChangesAsync()); 00.23
 
                 await db.SaveChangesAsync();
-                Console.WriteLine("changes saved");
-                Console.WriteLine(DateTime.Now);
+                //Console.WriteLine("changes saved");
+                //Console.WriteLine(DateTime.Now);
 
                 /*Stopwatch stopWatch = new Stopwatch();
                 stopWatch.Start();
@@ -273,7 +269,7 @@ namespace LearningDiary_Aada_V1
         }
         public static void PrintTopic(Topic topic)
         {
-            Console.WriteLine("\n");
+            // print topic info
             Console.WriteLine($"Topic id: {topic.Id}");
             Console.WriteLine($"Topic title: {topic.Title}");
             Console.WriteLine($"Topic description: {topic.Description}");
@@ -284,6 +280,7 @@ namespace LearningDiary_Aada_V1
             Console.WriteLine($"Topic in process: {topic.InProgress}");
             Console.WriteLine($"Topic completion date: {topic.CompletionDate}");
 
+            // print tasks
             using (LearningDiaryContext db = new LearningDiaryContext())
             {
                 var tasksToPrint = db.TaskInTopics.Where(task=>task.TopicId == topic.Id);
@@ -292,6 +289,7 @@ namespace LearningDiary_Aada_V1
                     tasksToPrint.ToList().ForEach(task => PrintTask(task));
                 }
             }
+            
             // check if the topic overdue
             // based on the starting date and estimated time
             // if it is, print a message to the user
@@ -304,6 +302,9 @@ namespace LearningDiary_Aada_V1
             {
                 Console.WriteLine("Note: This topic is overdue according to your estimated time to master it.");
             }
+
+            // a line to separate topics
+            Console.WriteLine("-------------\n\n");
             
         }
 
@@ -311,9 +312,19 @@ namespace LearningDiary_Aada_V1
         {
             using (LearningDiaryContext db = new LearningDiaryContext())
             {
+                // notes to a string separated by comma
                 var notes = db.Notes.Where(Note => Note.TaskId == task.Id).ToList();
                 string noteStr = String.Join(",", notes.Select(note=>note.Note1));
-                Console.WriteLine($"\nTask id: {task.Id}\nTask Topic_id: {task.TopicId}\nTask title: {task.Title}\nTask description: {task.Description}\nTask notes: {noteStr}\nTask Deadline: {task.Deadline}\nTask priority: {task.Priority}\nTask done: {task.Done}");
+                
+                // print task info
+                Console.WriteLine($"\nTask id: {task.Id}\n" +
+                    $"Task Topic_id: {task.TopicId}\n" +
+                    $"Task title: {task.Title}\n" +
+                    $"Task description: {task.Description}\n" +
+                    $"Task notes: {noteStr}\n" +
+                    $"Task Deadline: {task.Deadline}\n" +
+                    $"Task priority: {task.Priority}\n" +
+                    $"Task done: {task.Done}");
             } 
         }
         private static bool TopicMenu(Topic newTopic)
